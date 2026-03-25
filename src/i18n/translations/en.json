@@ -1,0 +1,113 @@
+{
+  "appName": "Digital Tailor Diary",
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "syncNow": "Sync now",
+    "loading": "Loading…",
+    "offline": "Offline",
+    "online": "Online",
+    "required": "Required",
+    "optional": "Optional"
+  },
+  "tabs": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "newOrder": "New",
+    "search": "Search",
+    "profile": "Profile"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "pending": "Pending",
+    "stitching": "In Stitching",
+    "ready": "Ready",
+    "dueTomorrow": "Due tomorrow",
+    "weeklyOrders": "Weekly orders",
+    "topCustomers": "Top customers"
+  },
+  "ordersBoard": {
+    "title": "Orders Board",
+    "pending": "Pending",
+    "cutting": "Cutting",
+    "stitching": "Stitching",
+    "ready": "Ready",
+    "delivered": "Delivered",
+    "changeStatus": "Change status",
+    "delivery": "Delivery",
+    "phone": "Phone"
+  },
+  "newOrder": {
+    "title": "New Order",
+    "customerInfo": "Customer info",
+    "customerName": "Name",
+    "phone": "Phone",
+    "invalidPhone": "Enter a valid phone number",
+    "viewHistory": "View history",
+    "garments": "Garments",
+    "addGarment": "Add garment",
+    "copyFromPrevious": "Copy from previous order",
+    "measurements": "Measurements",
+    "styling": "Styling details",
+    "notes": "Notes",
+    "drawing": "Drawing instructions",
+    "fabricPhotos": "Fabric photos",
+    "orderDetails": "Order details",
+    "deliveryDate": "Delivery date",
+    "price": "Price",
+    "advance": "Advance",
+    "remaining": "Remaining",
+    "payments": "Payment history",
+    "savedOffline": "Saved. Will sync when online.",
+    "sidePocketOn": "Side pocket: Yes",
+    "sidePocketOff": "Side pocket: No"
+  },
+  "garment": {
+    "qameez": "Qameez",
+    "shalwar": "Shalwar",
+    "waistcoat": "Waistcoat"
+  },
+  "measurement": {
+    "length": "Length",
+    "sleeve": "Sleeve",
+    "shoulder": "Shoulder",
+    "neck": "Neck",
+    "chest": "Chest",
+    "waist": "Waist",
+    "ghera": "Ghera",
+    "paancha": "Paancha",
+    "minMax": "Out of range"
+  },
+  "customerHistory": {
+    "title": "Customer history",
+    "totalSpent": "Total spent",
+    "orderCount": "Orders",
+    "reorder": "Re-order"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Name, phone, order #",
+    "filters": "Filters"
+  },
+  "profile": {
+    "title": "Profile & Settings",
+    "tailorName": "Tailor name",
+    "shopName": "Shop name",
+    "contact": "Contact",
+    "address": "Address",
+    "language": "Language",
+    "unit": "Measurement unit",
+    "inches": "Inches",
+    "cm": "Centimeters",
+    "notifications": "Notifications",
+    "sms": "SMS",
+    "push": "Push",
+    "backupSync": "Backup & sync",
+    "lastSync": "Last sync",
+    "pendingChanges": "Pending changes"
+  }
+}
+

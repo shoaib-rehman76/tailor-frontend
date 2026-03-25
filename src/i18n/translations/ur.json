@@ -1,0 +1,113 @@
+{
+  "appName": "ڈیجیٹل ٹیلر ڈائری",
+  "common": {
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ",
+    "close": "بند کریں",
+    "edit": "ترمیم",
+    "delete": "حذف کریں",
+    "syncNow": "ابھی ہم آہنگ کریں",
+    "loading": "لوڈ ہو رہا ہے…",
+    "offline": "آف لائن",
+    "online": "آن لائن",
+    "required": "لازمی",
+    "optional": "اختیاری"
+  },
+  "tabs": {
+    "dashboard": "ڈیش بورڈ",
+    "orders": "آرڈرز",
+    "newOrder": "نیا",
+    "search": "تلاش",
+    "profile": "پروفائل"
+  },
+  "dashboard": {
+    "title": "ڈیش بورڈ",
+    "pending": "زیر التواء",
+    "stitching": "سلائی میں",
+    "ready": "تیار",
+    "dueTomorrow": "کل ڈیلیوری",
+    "weeklyOrders": "ہفتہ وار آرڈرز",
+    "topCustomers": "بہترین کسٹمرز"
+  },
+  "ordersBoard": {
+    "title": "آرڈر بورڈ",
+    "pending": "زیر التواء",
+    "cutting": "کٹنگ",
+    "stitching": "سلائی",
+    "ready": "تیار",
+    "delivered": "ڈیلیور",
+    "changeStatus": "اسٹیٹس تبدیل کریں",
+    "delivery": "ڈیلیوری",
+    "phone": "فون"
+  },
+  "newOrder": {
+    "title": "نیا آرڈر",
+    "customerInfo": "کسٹمر معلومات",
+    "customerName": "نام",
+    "phone": "فون",
+    "invalidPhone": "درست فون نمبر درج کریں",
+    "viewHistory": "ہسٹری دیکھیں",
+    "garments": "لباس",
+    "addGarment": "لباس شامل کریں",
+    "copyFromPrevious": "پچھلے آرڈر سے کاپی کریں",
+    "measurements": "ناپ",
+    "styling": "سلائی کی تفصیل",
+    "notes": "نوٹس",
+    "drawing": "ڈرائنگ ہدایات",
+    "fabricPhotos": "کپڑے کی تصاویر",
+    "orderDetails": "آرڈر کی تفصیل",
+    "deliveryDate": "ڈیلیوری تاریخ",
+    "price": "قیمت",
+    "advance": "ایڈوانس",
+    "remaining": "بقایا",
+    "payments": "ادائیگی ہسٹری",
+    "savedOffline": "محفوظ ہوگیا۔ آن لائن ہوتے ہی ہم آہنگ ہوجائے گا۔",
+    "sidePocketOn": "سائڈ پوکیٹ: ہو",
+    "sidePocketOff": "سائڈ پوکیٹ: نہیں"
+  },
+  "garment": {
+    "qameez": "قمیض",
+    "shalwar": "شلوار",
+    "waistcoat": "ویسٹ کوٹ"
+  },
+  "measurement": {
+    "length": "لمبائی",
+    "sleeve": "بازو",
+    "shoulder": "کندھا",
+    "neck": "گلا",
+    "chest": "چھاتی",
+    "waist": "کمر",
+    "ghera": "گھیرا",
+    "paancha": "پانچہ",
+    "minMax": "حد سے باہر"
+  },
+  "customerHistory": {
+    "title": "کسٹمر ہسٹری",
+    "totalSpent": "کل رقم",
+    "orderCount": "آرڈرز",
+    "reorder": "دوبارہ آرڈر"
+  },
+  "search": {
+    "title": "تلاش",
+    "placeholder": "نام، فون، آرڈر نمبر",
+    "filters": "فلٹرز"
+  },
+  "profile": {
+    "title": "پروفائل اور سیٹنگز",
+    "tailorName": "ٹیلر نام",
+    "shopName": "دکان نام",
+    "contact": "رابطہ",
+    "address": "پتہ",
+    "language": "زبان",
+    "unit": "ناپ کی اکائی",
+    "inches": "انچ",
+    "cm": "سینٹی میٹر",
+    "notifications": "نوٹیفکیشن",
+    "sms": "ایس ایم ایس",
+    "push": "پش",
+    "backupSync": "بیک اپ اور ہم آہنگی",
+    "lastSync": "آخری ہم آہنگی",
+    "pendingChanges": "بقایا تبدیلیاں"
+  }
+}
+
