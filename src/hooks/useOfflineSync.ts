@@ -1,11 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Alert } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
+import i18n from "@/src/i18n";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { dequeue, markTryFailed } from "@/src/store/slices/offlineQueueSlice";
 import { setLastSyncAt, setSyncing } from "@/src/store/slices/syncStatusSlice";
 import { remoteApi } from "@/src/api/remoteApi";
-import { markOrderSyncedLocal } from "@/src/api/ordersRepository";
+import {
+  markOrderSyncedLocal,
+  removeOrderLocal,
+} from "@/src/api/ordersRepository";
 
 export function useOfflineSync() {
   const dispatch = useAppDispatch();
@@ -38,13 +42,22 @@ export function useOfflineSync() {
             if (item.type === "orders/create") {
               const order = item.payload as { id: string };
               await remoteApi.createOrder(item.payload as any);
-              await markOrderSyncedLocal(order.id);
+              await removeOrderLocal(order.id);
               dispatch(dequeue({ id: item.id }));
               syncedCount += 1;
-            } else if (item.type === "orders/updateStatus") {
+            } else if (item.type === "orders/update") {
               const { id, status } = item.payload as any;
               await remoteApi.updateOrderStatus(id, status);
               await markOrderSyncedLocal(id);
+              dispatch(dequeue({ id: item.id }));
+              syncedCount += 1;
+            } else if (item.type === "orders/updateOrder") {
+              await remoteApi.updateOrder(item.payload as any);
+              dispatch(dequeue({ id: item.id }));
+              syncedCount += 1;
+            } else if (item.type === "orders/delete") {
+              const { id } = item.payload as { id: string };
+              await remoteApi.deleteOrder(id);
               dispatch(dequeue({ id: item.id }));
               syncedCount += 1;
             } else {
@@ -69,7 +82,7 @@ export function useOfflineSync() {
         }
         dispatch(setLastSyncAt(Date.now()));
         if (syncedCount > 0) {
-          Alert.alert("Sync", "Offline data synced successfully");
+          Alert.alert(i18n.t("sync.title"), i18n.t("sync.success"));
         }
       } finally {
         dispatch(setSyncing(false));
@@ -82,4 +95,3 @@ export function useOfflineSync() {
     };
   }, [queue, dispatch, isSyncing]);
 }
-

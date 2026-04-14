@@ -6,3 +6,7 @@ export function isValidPhone(phoneRaw: string) {
   return phone.length >= 7;
 }
 
+export function isValidEmail(emailRaw: string) {
+  const email = emailRaw.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}

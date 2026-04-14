@@ -7,11 +7,15 @@
     "edit": "ترمیم",
     "delete": "حذف کریں",
     "syncNow": "ابھی ہم آہنگ کریں",
-    "loading": "لوڈ ہو رہا ہے…",
+    "loading": "لوڈ ہو رہا ہے...",
     "offline": "آف لائن",
     "online": "آن لائن",
     "required": "لازمی",
-    "optional": "اختیاری"
+    "optional": "اختیاری",
+    "refreshing": "ریفریش ہو رہا ہے...",
+    "live": "براہ راست",
+    "none": "کوئی نہیں",
+    "total": "کل"
   },
   "tabs": {
     "dashboard": "ڈیش بورڈ",
@@ -26,8 +30,32 @@
     "stitching": "سلائی میں",
     "ready": "تیار",
     "dueTomorrow": "کل ڈیلیوری",
+    "totalOrders": "کل آرڈرز",
+    "totalC": "کل کسٹمرز",
     "weeklyOrders": "ہفتہ وار آرڈرز",
-    "topCustomers": "بہترین کسٹمرز"
+    "topCustomers": "بہترین کسٹمرز",
+    "heroEyebrow": "ٹیلر کمانڈ سینٹر",
+    "heroDescription": "نیچے دی گئی تمام گنتی آپ کے بیک اینڈ سے آنے والے تازہ ترین آرڈرز سے بنائی جاتی ہے۔",
+    "lastUpdated": "آخری تازہ کاری {{time}}",
+    "customers": "کسٹمرز",
+    "quickAction": "فوری عمل",
+    "inProgress": "جاری کام",
+    "activeOrders": "فعال آرڈرز",
+    "activeOrdersNote": "جو ابھی پروڈکشن یا ڈیلیوری میں ہیں",
+    "dueToday": "آج واجب",
+    "dueTodayNote": "وہ آرڈرز جنہیں آج توجہ چاہیے",
+    "readyForPickup": "وصولی کے لیے تیار",
+    "readyForPickupNote": "تیار شدہ آرڈرز جو ابھی لینے باقی ہیں",
+    "totalOrdersNote": "تمام آرڈرز کی مجموعی تعداد",
+    "revenueSnapshot": "آمدنی کا جائزہ",
+    "totalValue": "کل مالیت",
+    "collected": "وصول شدہ",
+    "outstanding": "بقایا",
+    "deliveryFocus": "ڈیلیوری فوکس",
+    "overdue": "تاخیر شدہ",
+    "productionFocus": "پروڈکشن فوکس",
+    "productionMix": "پروڈکشن تقسیم",
+    "paidSoFar": "اب تک ادائیگی: {{amount}} روپے"
   },
   "ordersBoard": {
     "title": "آرڈر بورڈ",
@@ -38,7 +66,28 @@
     "delivered": "ڈیلیور",
     "changeStatus": "اسٹیٹس تبدیل کریں",
     "delivery": "ڈیلیوری",
-    "phone": "فون"
+    "phone": "فون",
+    "timeline": "ٹائم لائن",
+    "price": "قیمت",
+    "remaining": "بقایا",
+    "completed": "مکمل",
+    "heroDescription": "ہر آرڈر کو وصولی سے ڈیلیوری تک ایک واضح اور بصری ورک فلو میں دیکھیں۔",
+    "active": "فعال",
+    "totalOrdersCard": "کل آرڈرز",
+    "refreshState": "ریفریش حالت",
+    "lanePending": "نئے آرڈرز جو ابھی پروڈکشن میں جانے کے منتظر ہیں",
+    "laneCutting": "ناپ اور کپڑے کی تیاری کا مرحلہ",
+    "laneStitching": "وہ آرڈرز جو اس وقت سلائی میں ہیں",
+    "laneReady": "تیار شدہ آرڈرز جو وصولی کے منتظر ہیں",
+    "laneDelivered": "مکمل اور ڈیلیور شدہ آرڈرز",
+    "noOrdersTitle": "یہاں کوئی آرڈر نہیں",
+    "noOrdersDescription": "نئے آرڈرز خودکار طور پر اس حصے میں آ جائیں گے۔",
+    "status": "اسٹیٹس",
+    "updating": "اپ ڈیٹ ہو رہا ہے...",
+    "dueToday": "آج واجب",
+    "dueTomorrow": "کل واجب",
+    "daysLeft": "{{count}} دن باقی",
+    "daysLate": "{{count}} دن تاخیر"
   },
   "newOrder": {
     "title": "نیا آرڈر",
@@ -61,9 +110,17 @@
     "advance": "ایڈوانس",
     "remaining": "بقایا",
     "payments": "ادائیگی ہسٹری",
-    "savedOffline": "محفوظ ہوگیا۔ آن لائن ہوتے ہی ہم آہنگ ہوجائے گا۔",
-    "sidePocketOn": "سائڈ پوکیٹ: ہو",
-    "sidePocketOff": "سائڈ پوکیٹ: نہیں"
+    "savedOffline": "محفوظ ہو گیا۔ آن لائن ہوتے ہی ہم آہنگ ہو جائے گا۔",
+    "sidePocketOn": "سائیڈ پاکٹ: ہاں",
+    "sidePocketOff": "سائیڈ پاکٹ: نہیں",
+    "heroEyebrow": "آرڈر ورک اسپیس",
+    "heroDescription": "ناپ، قیمت اور ڈیلیوری کی تفصیل ایک ہی خوبصورت فلو میں درج کریں۔",
+    "editTitle": "آرڈر ترمیم",
+    "updateCta": "آرڈر اپ ڈیٹ کریں",
+    "createdSuccess": "آرڈر کامیابی سے بن گیا",
+    "updatedSuccess": "آرڈر کامیابی سے اپ ڈیٹ ہو گیا",
+    "offlineFallback": "سرور تک رسائی نہ ہو سکی۔ آرڈر آف لائن محفوظ ہو گیا ہے اور خودکار طور پر ہم آہنگ ہو جائے گا۔",
+    "offlineUpdateSaved": "آرڈر اپ ڈیٹ آف لائن محفوظ ہو گئی"
   },
   "garment": {
     "qameez": "قمیض",
@@ -78,7 +135,7 @@
     "chest": "چھاتی",
     "waist": "کمر",
     "ghera": "گھیرا",
-    "paancha": "پانچہ",
+    "paancha": "پائنچہ",
     "minMax": "حد سے باہر"
   },
   "customerHistory": {
@@ -90,7 +147,22 @@
   "search": {
     "title": "تلاش",
     "placeholder": "نام، فون، آرڈر نمبر",
-    "filters": "فلٹرز"
+    "filters": "فلٹرز",
+    "heroEyebrow": "کسٹمر انٹیلیجنس",
+    "heroDescription": "بیک اینڈ کے تازہ آرڈر ڈیٹا سے کسٹمرز اور ان کی ہسٹری تلاش کریں۔",
+    "customersFound": "ملنے والے کسٹمرز",
+    "ordersScanned": "دیکھے گئے آرڈرز",
+    "searchSection": "تلاش",
+    "matchBy": "تلاش کی بنیاد",
+    "matchByValue": "نام، فون، آرڈر نمبر، اسٹیٹس",
+    "dataSource": "ڈیٹا سورس",
+    "liveBackend": "براہ راست بیک اینڈ آرڈرز",
+    "noResultsTitle": "کوئی ملتا جلتا کسٹمر نہیں ملا",
+    "noResultsDescription": "کوئی اور فون نمبر، نام یا آرڈر اسٹیٹس آزمائیں۔",
+    "ordersCount": "{{count}} آرڈرز",
+    "profile": "پروفائل",
+    "openHistory": "ہسٹری کھولیں",
+    "totalSpentValue": "کل رقم"
   },
   "profile": {
     "title": "پروفائل اور سیٹنگز",
@@ -107,7 +179,28 @@
     "push": "پش",
     "backupSync": "بیک اپ اور ہم آہنگی",
     "lastSync": "آخری ہم آہنگی",
-    "pendingChanges": "بقایا تبدیلیاں"
+    "pendingChanges": "بقایا تبدیلیاں",
+    "heroEyebrow": "ورک اسپیس سیٹنگز",
+    "heroDescription": "اپنا ٹیلر پروفائل، ترجیحات اور ہم آہنگی کی حالت ایک جگہ رکھیں۔",
+    "pendingSync": "بقایا سنک",
+    "noSyncYet": "ابھی تک کوئی سنک نہیں"
+  },
+  "orderDetail": {
+    "deleteTitle": "آرڈر حذف کریں",
+    "deleteMessage": "کیا آپ واقعی یہ آرڈر حذف کرنا چاہتے ہیں؟",
+    "editOrder": "آرڈر ترمیم",
+    "deleteOrder": "آرڈر حذف کریں",
+    "statusLabel": "اسٹیٹس: {{status}}",
+    "contactCustomer": "کسٹمر سے رابطہ",
+    "sendSms": "ایس ایم ایس بھیجیں",
+    "sendWhatsApp": "واٹس ایپ بھیجیں",
+    "callCustomer": "کال کریں",
+    "smsUnavailable": "اس ڈیوائس پر ایس ایم ایس دستیاب نہیں ہے۔",
+    "contactError": "منتخب رابطہ عمل نہیں کھولا جا سکا۔",
+    "messageTemplate": "السلام علیکم {{name}}، آپ کا آرڈر #{{orderNo}} اس وقت {{status}} میں ہے۔ ڈیلیوری کی تاریخ: {{deliveryDate}}۔"
+  },
+  "sync": {
+    "title": "سنک",
+    "success": "آف لائن ڈیٹا کامیابی سے ہم آہنگ ہو گیا"
   }
 }
-

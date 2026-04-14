@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { nanoid } from "@reduxjs/toolkit";
+import { LinearGradient } from "expo-linear-gradient";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
@@ -26,12 +27,22 @@ import {
   createOrderLocal,
   getOrderById,
   listOrdersByCustomerPhone,
-  markOrderSyncedLocal,
+  removeOrderLocal,
+  upsertOrderLocal,
+  updateOrderLocal,
 } from "@/src/api/ordersRepository";
 import { isValidPhone } from "@/src/utils/validation";
 import { useAppDispatch } from "@/src/store/hooks";
 import { enqueue } from "@/src/store/slices/offlineQueueSlice";
 import { remoteApi } from "@/src/api/remoteApi";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEYS } from "@/src/constants/storageKeys";
+
+type SaveMode = "create" | "update";
+type SaveResult = {
+  order?: Order;
+  mode: SaveMode;
+};
 
 function emptyGarment(type: GarmentType): Garment {
   return {
@@ -48,8 +59,11 @@ export function NewOrderScreen() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const qc = useQueryClient();
-  const params = useLocalSearchParams<{ phone?: string; copyOrderId?: string }>();
-
+  const params = useLocalSearchParams<{
+    phone?: string;
+    copyOrderId?: string;
+    editOrderId?: string;
+  }>();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -63,6 +77,9 @@ export function NewOrderScreen() {
   const [garments, setGarments] = useState<Garment[]>([]);
   const [garmentPickerOpen, setGarmentPickerOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const isEditMode =
+    typeof params.editOrderId === "string" && params.editOrderId.length > 0;
 
   const phoneValid = isValidPhone(phone);
   const [errors, setErrors] = useState<{
@@ -81,6 +98,27 @@ export function NewOrderScreen() {
 
   useEffect(() => {
     const run = async () => {
+      if (!isEditMode || typeof params.editOrderId !== "string") return;
+      const existing =
+        (await getOrderById(params.editOrderId)) ??
+        (await remoteApi.fetchOrders()).find((item) => item.id === params.editOrderId);
+      if (!existing) return;
+      await upsertOrderLocal(existing);
+      setEditingOrder(existing);
+      setName(existing.customer.name);
+      setPhone(existing.customer.phone);
+      setNotes(existing.notes ?? "");
+      setDeliveryDate(new Date(existing.deliveryDate));
+      setPrice(String(existing.price ?? ""));
+      setAdvance(String(existing.advance ?? ""));
+      setGarments(existing.garments ?? []);
+    };
+    void run();
+  }, [isEditMode, params.editOrderId]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+    const run = async () => {
       if (!params.copyOrderId || typeof params.copyOrderId !== "string") return;
       const existing = await getOrderById(params.copyOrderId);
       if (!existing) return;
@@ -94,7 +132,7 @@ export function NewOrderScreen() {
       );
     };
     void run();
-  }, [params.copyOrderId]);
+  }, [isEditMode, params.copyOrderId]);
 
   const historyQuery = useQuery({
     queryKey: ["customers", "history", phone],
@@ -108,29 +146,53 @@ export function NewOrderScreen() {
     return Math.max(0, p - a);
   }, [price, advance]);
 
-  const saveMutation = useMutation({
+  const datePickerMinimumDate = useMemo(() => {
+    if (isEditMode) {
+      return undefined;
+    }
+    const minDate = new Date();
+    minDate.setHours(0, 0, 0, 0);
+    return minDate;
+  }, [isEditMode]);
+
+  const saveMutation = useMutation<SaveResult>({
     mutationFn: async () => {
       const p = phone.replace(/\s+/g, "");
       const priceN = Number(price) || 0;
       const advanceN = Number(advance) || 0;
+      const deviceToken =
+        editingOrder?.deviceToken ??
+        ((await AsyncStorage.getItem(STORAGE_KEYS.pushToken)) ?? undefined);
 
       const draft: Omit<Order, "id" | "orderNo" | "createdAt" | "updatedAt"> = {
         customer: { name: name.trim(), phone: p },
-        status: "PENDING",
+        status: editingOrder?.status ?? "PENDING",
         deliveryDate: deliveryDate.getTime(),
         garments,
         notes: notes.trim() ? notes.trim() : undefined,
-        drawingSvgPath: undefined,
-        fabricPhotoUris: [],
+        drawingSvgPath: editingOrder?.drawingSvgPath,
+        fabricPhotoUris: editingOrder?.fabricPhotoUris ?? [],
         price: priceN,
         advance: advanceN,
         payments:
-          advanceN > 0
+          editingOrder?.payments ??
+          (advanceN > 0
             ? [{ id: nanoid(), amount: advanceN, paidAt: Date.now() }]
-            : [],
+            : []),
+        deviceToken,
       };
 
-      return createOrderLocal(draft);
+      if (editingOrder) {
+        return {
+          order: await updateOrderLocal(editingOrder.id, draft),
+          mode: "update",
+        };
+      }
+
+      return {
+        order: await createOrderLocal(draft),
+        mode: "create",
+      };
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["orders", "list"] });
@@ -154,7 +216,7 @@ export function NewOrderScreen() {
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    if (deliveryDate.getTime() < todayStart.getTime()) {
+    if (!isEditMode && deliveryDate.getTime() < todayStart.getTime()) {
       nextErrors.deliveryDate = t("common.required");
     }
 
@@ -172,36 +234,55 @@ export function NewOrderScreen() {
     }
 
     setErrors({});
-    const order = await saveMutation.mutateAsync();
+    const result = await saveMutation.mutateAsync();
+    const order = result.order;
+    const mode = result.mode;
+    if (!order) return;
     const net = await NetInfo.fetch();
     const online = !!net.isConnected;
 
     if (online) {
       try {
-        await remoteApi.createOrder(order);
-        await markOrderSyncedLocal(order.id);
-        Alert.alert(t("common.save"), "Order created successfully");
+        if (mode === "update") {
+          await remoteApi.updateOrder(order);
+          await qc.invalidateQueries({ queryKey: ["orders", "list"] });
+          await qc.refetchQueries({ queryKey: ["orders", "list"], exact: true });
+        } else {
+          await remoteApi.createOrder(order);
+          await removeOrderLocal(order.id);
+        }
+        Alert.alert(
+          t("common.save"),
+          mode === "update"
+            ? t("newOrder.updatedSuccess")
+            : t("newOrder.createdSuccess"),
+        );
         router.push("/(tabs)/orders");
-      } catch (e) {
+      } catch {
         dispatch(
           enqueue({
-            type: "orders/create",
+            type: mode === "update" ? "orders/updateOrder" : "orders/create",
             payload: order,
           })
         );
         Alert.alert(
           t("common.save"),
-          "Could not reach server. Saved offline and will sync automatically."
+          t("newOrder.offlineFallback")
         );
       }
     } else {
       dispatch(
         enqueue({
-          type: "orders/create",
+          type: mode === "update" ? "orders/updateOrder" : "orders/create",
           payload: order,
         })
       );
-      Alert.alert(t("common.save"), t("newOrder.savedOffline"));
+      Alert.alert(
+        t("common.save"),
+        mode === "update"
+          ? t("newOrder.offlineUpdateSaved")
+          : t("newOrder.savedOffline"),
+      );
     }
 
     setName("");
@@ -210,6 +291,7 @@ export function NewOrderScreen() {
     setPrice("");
     setAdvance("");
     setGarments([]);
+    setEditingOrder(null);
   };
 
   const canCopy = (historyQuery.data?.length ?? 0) > 0;
@@ -225,16 +307,50 @@ export function NewOrderScreen() {
   };
 
   return (
-    <Screen contentClassName="p-4 gap-4 mb-[10rem] pb-[6rem]" scroll>
-      <Text className="text-2xl font-bold text-black">{t("newOrder.title")}</Text>
+    <Screen contentClassName="p-4 gap-4 mb-[10rem] pb-[6rem] bg-[#f5f7fb]" scroll>
+      <LinearGradient
+        colors={["#111827", "#7c3aed", "#ec4899"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: 28, padding: 18 }}
+      >
+        <Text className="text-xs font-semibold uppercase tracking-[2px] text-white/70">
+          {t("newOrder.heroEyebrow")}
+        </Text>
+        <Text className="mt-2 text-3xl font-black text-white">
+          {isEditMode ? t("newOrder.editTitle") : t("newOrder.title")}
+        </Text>
+        <Text className="mt-2 text-sm leading-5 text-white/80">
+          {t("newOrder.heroDescription")}
+        </Text>
 
-      <Card className="gap-3">
+        <View className="mt-4 flex-row gap-3">
+          <View className="flex-1 rounded-2xl bg-white px-4 py-3">
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              {t("newOrder.garments")}
+            </Text>
+            <Text className="mt-1 text-2xl font-black text-slate-950">
+              {garments.length}
+            </Text>
+          </View>
+          <View className="flex-1 rounded-2xl bg-white/15 px-4 py-3">
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-white/70">
+              {t("newOrder.remaining")}
+            </Text>
+            <Text className="mt-1 text-2xl font-black text-white">
+              Rs {remaining}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <Card className="gap-3 border-0 bg-white">
         <SectionHeader
           title={t("newOrder.customerInfo")}
           right={
             canCopy ? (
               <Pressable
-                className="px-3 py-1 rounded-full bg-blue-600"
+                className="px-3 py-2 rounded-full bg-slate-900"
                 onPress={copyFromPrevious}
               >
                 <Text className="text-xs font-semibold text-white">
@@ -279,12 +395,15 @@ export function NewOrderScreen() {
         </View>
       </Card>
 
-      <Card className="gap-3">
+      <Card className="gap-3 border-0 bg-white">
         <SectionHeader
           title={t("newOrder.garments")}
           right={
-            <Pressable onPress={() => setGarmentPickerOpen(true)}>
-              <Text className="text-sm font-semibold text-black">
+            <Pressable
+              className="rounded-full bg-slate-900 px-3 py-2"
+              onPress={() => setGarmentPickerOpen(true)}
+            >
+              <Text className="text-sm font-semibold text-white">
                 {t("newOrder.addGarment")}
               </Text>
             </Pressable>
@@ -298,7 +417,7 @@ export function NewOrderScreen() {
         ) : null}
 
         {garments.map((g) => (
-          <View key={g.id} className="gap-3 rounded-2xl bg-gray-50 p-3">
+          <View key={g.id} className="gap-3 rounded-3xl bg-slate-50 p-4">
             <View className="flex-row items-center justify-between">
               <Text className="text-base font-semibold text-black">
                 {t(GARMENT_LABEL_KEY[g.type])}
@@ -343,8 +462,8 @@ export function NewOrderScreen() {
                   }`}
                 >
                   {g.styling?.sidePocket
-                    ? t("newOrder.sidePocketOn") ?? "Side pocket: Yes"
-                    : t("newOrder.sidePocketOff") ?? "Side pocket: No"}
+                    ? t("newOrder.sidePocketOn")
+                    : t("newOrder.sidePocketOff")}
                 </Text>
               </Pressable>
             </View>
@@ -372,7 +491,7 @@ export function NewOrderScreen() {
         ))}
       </Card>
 
-      <Card className="gap-3">
+      <Card className="gap-3 border-0 bg-white">
         <SectionHeader title={t("newOrder.notes")} />
         <Input
           value={notes}
@@ -382,7 +501,7 @@ export function NewOrderScreen() {
         />
       </Card>
 
-      <Card className="gap-3">
+      <Card className="gap-3 border-0 bg-white">
         <SectionHeader title={t("newOrder.orderDetails")} />
         <Pressable onPress={() => setDatePickerOpen(true)}>
           <View pointerEvents="none">
@@ -400,11 +519,16 @@ export function NewOrderScreen() {
             value={deliveryDate}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
-            minimumDate={new Date()}
+            minimumDate={datePickerMinimumDate}
             onChange={(event: DateTimePickerEvent, selected) => {
               if (Platform.OS !== "ios") setDatePickerOpen(false);
               if (event.type === "dismissed") return;
-              if (selected) setDeliveryDate(selected);
+              if (selected) {
+                setDeliveryDate(selected);
+                if (errors.deliveryDate) {
+                  setErrors((prev) => ({ ...prev, deliveryDate: undefined }));
+                }
+              }
             }}
           />
         ) : null}
@@ -437,24 +561,30 @@ export function NewOrderScreen() {
           placeholder="0"
           error={errors.advance}
         />
-        <View className="flex-row items-center justify-between">
-          <Text className="text-sm text-gray-700">{t("newOrder.remaining")}</Text>
-          <Text className="text-base font-bold text-red-600">{remaining}</Text>
+        <View className="rounded-2xl bg-rose-50 px-4 py-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm text-rose-700">{t("newOrder.remaining")}</Text>
+            <Text className="text-lg font-black text-rose-700">Rs {remaining}</Text>
+          </View>
         </View>
       </Card>
 
-      <Button title={t("common.save")} onPress={onSave} loading={saveMutation.isPending} />
+      <Button
+        title={isEditMode ? t("newOrder.updateCta") : t("common.save")}
+        onPress={onSave}
+        loading={saveMutation.isPending}
+      />
 
       <Modal transparent visible={garmentPickerOpen} animationType="fade">
         <Pressable
           className="flex-1 bg-black/40 items-center justify-center p-6"
           onPress={() => setGarmentPickerOpen(false)}
         >
-          <Pressable className="w-full rounded-2xl bg-white p-4 gap-2">
+          <Pressable className="w-full rounded-3xl bg-white p-4 gap-2">
             {(["QAMEEZ", "SHALWAR", "WAISTCOAT"] as GarmentType[]).map((type) => (
               <Pressable
                 key={type}
-                className="h-12 rounded-xl bg-gray-100 items-center justify-center"
+                className="h-12 rounded-2xl bg-slate-100 items-center justify-center"
                 onPress={() => {
                   setGarments((prev) => [...prev, emptyGarment(type)]);
                   setGarmentPickerOpen(false);
@@ -471,4 +601,3 @@ export function NewOrderScreen() {
     </Screen>
   );
 }
-

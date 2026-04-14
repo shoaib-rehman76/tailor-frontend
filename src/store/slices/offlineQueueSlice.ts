@@ -2,7 +2,9 @@ import { createSlice, nanoid, PayloadAction } from "@reduxjs/toolkit";
 
 export type OfflineOperationType =
   | "orders/create"
-  | "orders/updateStatus"
+  | "orders/update"
+  | "orders/updateOrder"
+  | "orders/delete"
   | "orders/addPayment"
   | "settings/updateProfile";
 
@@ -65,4 +67,3 @@ export const { enqueue, dequeue, clearQueue, markTryFailed, hydrateQueue } =
   offlineQueueSlice.actions;
 
 export default offlineQueueSlice.reducer;
-

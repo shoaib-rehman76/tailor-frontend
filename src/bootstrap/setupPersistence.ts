@@ -9,6 +9,10 @@ export function setupPersistence(store: Store) {
   const persist = async (state: RootState) => {
     await Promise.all([
       AsyncStorage.setItem(
+        STORAGE_KEYS.authSession,
+        JSON.stringify(state.auth.session)
+      ),
+      AsyncStorage.setItem(
         STORAGE_KEYS.settings,
         JSON.stringify(state.settings)
       ),
@@ -30,4 +34,3 @@ export function setupPersistence(store: Store) {
     }, 250);
   });
 }
-

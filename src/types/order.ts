@@ -47,6 +47,6 @@ export type Order = {
   price: number;
   advance: number;
   payments: Payment[];
+  deviceToken?: string;
   syncedAt?: number;
 };
-

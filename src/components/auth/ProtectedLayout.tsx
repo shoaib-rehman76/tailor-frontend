@@ -1,8 +1,8 @@
-import { Redirect } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
+import { Redirect, Slot } from "expo-router";
 import { useAppSelector } from "@/src/store/hooks";
 
-export default function Index() {
+export function ProtectedLayout({ children }: { children?: React.ReactNode }) {
   const session = useAppSelector((state) => state.auth.session);
   const hydrated = useAppSelector((state) => state.auth.hydrated);
 
@@ -14,5 +14,9 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={session ? "/orders" : "/login"} />;
+  if (!session) {
+    return <Redirect href="/login" />;
+  }
+
+  return children ? <>{children}</> : <Slot />;
 }

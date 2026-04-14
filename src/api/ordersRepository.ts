@@ -1,10 +1,19 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { nanoid } from "@reduxjs/toolkit";
 import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import type { Order, OrderStatus } from "@/src/types/order";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { nanoid } from "@reduxjs/toolkit";
 
 function now() {
   return Date.now();
+}
+
+function generateOrderNo(existingOrders: Order[]) {
+  while (true) {
+    const candidate = `ORD-${nanoid(8).replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}`;
+    if (!existingOrders.some((order) => order.orderNo === candidate)) {
+      return candidate;
+    }
+  }
 }
 
 async function readOrders(): Promise<Order[]> {
@@ -22,47 +31,6 @@ async function writeOrders(orders: Order[]) {
   await AsyncStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
 }
 
-export async function seedMockOrdersIfEmpty() {
-  const orders = await readOrders();
-  if (orders.length > 0) return;
-
-  const basePhone = "03001234567";
-  const baseCreated = now() - 1000 * 60 * 60 * 24 * 5;
-
-  const seed: Order[] = [
-    {
-      id: nanoid(),
-      orderNo: "1001",
-      createdAt: baseCreated,
-      updatedAt: baseCreated,
-      customer: { name: "Ahmed", phone: basePhone },
-      status: "PENDING",
-      deliveryDate: now() + 1000 * 60 * 60 * 24 * 2,
-      garments: [],
-      fabricPhotoUris: [],
-      price: 4500,
-      advance: 1500,
-      payments: [{ id: nanoid(), amount: 1500, paidAt: baseCreated }],
-    },
-    {
-      id: nanoid(),
-      orderNo: "1002",
-      createdAt: baseCreated + 1000 * 60 * 60,
-      updatedAt: baseCreated + 1000 * 60 * 60,
-      customer: { name: "Bilal", phone: "03111222333" },
-      status: "STITCHING",
-      deliveryDate: now() + 1000 * 60 * 60 * 24 * 1,
-      garments: [],
-      fabricPhotoUris: [],
-      price: 6000,
-      advance: 2000,
-      payments: [{ id: nanoid(), amount: 2000, paidAt: baseCreated + 1000 * 60 * 60 }],
-    }
-  ];
-
-  await writeOrders(seed);
-}
-
 export async function listOrders(): Promise<Order[]> {
   const orders = await readOrders();
   return orders.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -73,7 +41,9 @@ export async function getOrderById(id: string): Promise<Order | undefined> {
   return orders.find((o) => o.id === id);
 }
 
-export async function listOrdersByCustomerPhone(phone: string): Promise<Order[]> {
+export async function listOrdersByCustomerPhone(
+  phone: string,
+): Promise<Order[]> {
   const orders = await readOrders();
   return orders
     .filter((o) => o.customer.phone === phone)
@@ -85,12 +55,7 @@ export async function searchOrdersLocal(q: string): Promise<Order[]> {
   if (!query) return listOrders();
   const orders = await readOrders();
   return orders.filter((o) => {
-    const fields = [
-      o.customer.name,
-      o.customer.phone,
-      o.orderNo,
-      o.status,
-    ]
+    const fields = [o.customer.name, o.customer.phone, o.orderNo, o.status]
       .join(" ")
       .toLowerCase();
     return fields.includes(query);
@@ -98,15 +63,14 @@ export async function searchOrdersLocal(q: string): Promise<Order[]> {
 }
 
 export async function createOrderLocal(
-  draft: Omit<Order, "id" | "orderNo" | "createdAt" | "updatedAt">
+  draft: Omit<Order, "id" | "orderNo" | "createdAt" | "updatedAt">,
 ): Promise<Order> {
   const orders = await readOrders();
-  const maxNo = orders.reduce((acc, o) => Math.max(acc, Number(o.orderNo) || 0), 1000);
   const createdAt = now();
   const order: Order = {
     ...draft,
     id: nanoid(),
-    orderNo: String(maxNo + 1),
+    orderNo: generateOrderNo(orders),
     createdAt,
     updatedAt: createdAt,
   };
@@ -117,7 +81,7 @@ export async function createOrderLocal(
 
 export async function updateOrderStatusLocal(
   id: string,
-  status: OrderStatus
+  status: OrderStatus,
 ): Promise<Order | undefined> {
   const orders = await readOrders();
   const idx = orders.findIndex((o) => o.id === id);
@@ -127,9 +91,46 @@ export async function updateOrderStatusLocal(
   return orders[idx];
 }
 
+export async function updateOrderLocal(
+  id: string,
+  updates: Omit<Order, "id" | "orderNo" | "createdAt" | "updatedAt">,
+): Promise<Order | undefined> {
+  const orders = await readOrders();
+  const idx = orders.findIndex((o) => o.id === id);
+  if (idx === -1) return undefined;
+  orders[idx] = {
+    ...orders[idx],
+    ...updates,
+    id: orders[idx].id,
+    orderNo: orders[idx].orderNo,
+    createdAt: orders[idx].createdAt,
+    updatedAt: now(),
+  };
+  await writeOrders(orders);
+  return orders[idx];
+}
+
+export async function upsertOrderLocal(order: Order): Promise<Order> {
+  const orders = await readOrders();
+  const idx = orders.findIndex((o) => o.id === order.id);
+  const nextOrder = {
+    ...order,
+    updatedAt: now(),
+  };
+
+  if (idx === -1) {
+    orders.push(nextOrder);
+  } else {
+    orders[idx] = nextOrder;
+  }
+
+  await writeOrders(orders);
+  return nextOrder;
+}
+
 export async function addPaymentLocal(
   id: string,
-  amount: number
+  amount: number,
 ): Promise<Order | undefined> {
   const orders = await readOrders();
   const idx = orders.findIndex((o) => o.id === id);
@@ -147,9 +148,15 @@ export async function addPaymentLocal(
   return orders[idx];
 }
 
+export async function removeOrderLocal(id: string): Promise<void> {
+  const orders = await readOrders();
+  const filtered = orders.filter((o) => o.id !== id);
+  await writeOrders(filtered);
+}
+
 export async function markOrderSyncedLocal(
   id: string,
-  syncedAt: number = now()
+  syncedAt: number = now(),
 ): Promise<Order | undefined> {
   const orders = await readOrders();
   const idx = orders.findIndex((o) => o.id === id);
@@ -158,4 +165,3 @@ export async function markOrderSyncedLocal(
   await writeOrders(orders);
   return orders[idx];
 }
-
