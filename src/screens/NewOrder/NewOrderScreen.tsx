@@ -90,11 +90,35 @@ export function NewOrderScreen() {
     advance?: string;
   }>({});
 
+  const resetForm = () => {
+    const nextDeliveryDate = new Date();
+    nextDeliveryDate.setDate(nextDeliveryDate.getDate() + 2);
+    setName("");
+    setPhone("");
+    setNotes("");
+    setDeliveryDate(nextDeliveryDate);
+    setPrice("");
+    setAdvance("");
+    setGarments([]);
+    setEditingOrder(null);
+    setErrors({});
+  };
+
   useEffect(() => {
     if (params.phone && typeof params.phone === "string") {
       setPhone(params.phone);
     }
   }, [params.phone]);
+
+  useEffect(() => {
+    if (isEditMode) return;
+
+    resetForm();
+
+    if (params.phone && typeof params.phone === "string") {
+      setPhone(params.phone);
+    }
+  }, [isEditMode, params.phone]);
 
   useEffect(() => {
     const run = async () => {
@@ -250,6 +274,8 @@ export function NewOrderScreen() {
         } else {
           await remoteApi.createOrder(order);
           await removeOrderLocal(order.id);
+          await qc.invalidateQueries({ queryKey: ["orders", "list"] });
+          await qc.refetchQueries({ queryKey: ["orders", "list"], exact: true });
         }
         Alert.alert(
           t("common.save"),
@@ -285,13 +311,7 @@ export function NewOrderScreen() {
       );
     }
 
-    setName("");
-    setPhone("");
-    setNotes("");
-    setPrice("");
-    setAdvance("");
-    setGarments([]);
-    setEditingOrder(null);
+    resetForm();
   };
 
   const canCopy = (historyQuery.data?.length ?? 0) > 0;
