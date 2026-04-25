@@ -4,7 +4,11 @@ import NetInfo from "@react-native-community/netinfo";
 import i18n from "@/src/i18n";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { dequeue, markTryFailed } from "@/src/store/slices/offlineQueueSlice";
-import { setLastSyncAt, setSyncing } from "@/src/store/slices/syncStatusSlice";
+import {
+  setLastSyncAt,
+  setSyncError,
+  setSyncing,
+} from "@/src/store/slices/syncStatusSlice";
 import { remoteApi } from "@/src/api/remoteApi";
 import {
   markOrderSyncedLocal,
@@ -14,7 +18,7 @@ import {
 export function useOfflineSync() {
   const dispatch = useAppDispatch();
   const queue = useAppSelector((s) => s.offlineQueue.items);
-  const isSyncing = useAppSelector((s) => s.syncStatus.isSyncing);
+  const { isSyncing, syncRequestNonce } = useAppSelector((s) => s.syncStatus);
   const onlineRef = useRef<boolean>(true);
   const lastOfflineRef = useRef<boolean>(false);
 
@@ -34,6 +38,7 @@ export function useOfflineSync() {
       if (queue.length === 0) return;
 
       dispatch(setSyncing(true));
+      dispatch(setSyncError(undefined));
       let syncedCount = 0;
       try {
         for (const item of queue) {
@@ -52,6 +57,10 @@ export function useOfflineSync() {
               dispatch(dequeue({ id: item.id }));
               syncedCount += 1;
             } else if (item.type === "orders/updateOrder") {
+              await remoteApi.updateOrder(item.payload as any);
+              dispatch(dequeue({ id: item.id }));
+              syncedCount += 1;
+            } else if (item.type === "orders/addPayment") {
               await remoteApi.updateOrder(item.payload as any);
               dispatch(dequeue({ id: item.id }));
               syncedCount += 1;
@@ -77,6 +86,9 @@ export function useOfflineSync() {
                 error: e instanceof Error ? e.message : "Sync error",
               })
             );
+            dispatch(
+              setSyncError(e instanceof Error ? e.message : "Sync error"),
+            );
             break;
           }
         }
@@ -93,5 +105,5 @@ export function useOfflineSync() {
     return () => {
       cancelled = true;
     };
-  }, [queue, dispatch, isSyncing]);
+  }, [queue, dispatch, isSyncing, syncRequestNonce]);
 }

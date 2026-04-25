@@ -12,6 +12,7 @@ import { Button } from "@/src/components/common/Button";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { clearSession } from "@/src/store/slices/authSlice";
 import {
+  requestSync,
   setLanguage,
   setNotifications,
   setUnit,

@@ -8,13 +8,16 @@ import {
 import {
   hydrateQueue,
   OfflineQueueState,
+  clearQueue,
 } from "@/src/store/slices/offlineQueueSlice";
 import {
   hydrateSyncStatus,
+  resetSyncStatus,
   SyncStatusState,
 } from "@/src/store/slices/syncStatusSlice";
 import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import type { AuthSession } from "@/src/types/auth";
+import { toScopedStorageKey } from "@/src/utils/storageScope";
 
 function safeJsonParse<T>(value: string | null): T | undefined {
   if (!value) return undefined;
@@ -27,28 +30,49 @@ function safeJsonParse<T>(value: string | null): T | undefined {
 
 export const hydrateAllFromStorage = createAsyncThunk(
   "bootstrap/hydrateAllFromStorage",
-  async (_, { dispatch }) => {
-    const [authRaw, settingsRaw, queueRaw, syncRaw] = await Promise.all([
+  async (userIdOverride: string | undefined, { dispatch }) => {
+    const [authRaw, settingsRaw] = await Promise.all([
       AsyncStorage.getItem(STORAGE_KEYS.authSession),
       AsyncStorage.getItem(STORAGE_KEYS.settings),
-      AsyncStorage.getItem(STORAGE_KEYS.offlineQueue),
-      AsyncStorage.getItem(STORAGE_KEYS.syncStatus),
     ]);
 
-    const auth = safeJsonParse<AuthSession>(authRaw);
-    if (auth) {
-      dispatch(hydrateAuthSession(auth));
-    } else {
-      dispatch(markAuthHydrated());
+    let auth: AuthSession | undefined;
+    if (!userIdOverride) {
+      auth = safeJsonParse<AuthSession>(authRaw);
+      if (auth) {
+        dispatch(hydrateAuthSession(auth));
+      } else {
+        dispatch(markAuthHydrated());
+      }
     }
 
     const settings = safeJsonParse<SettingsState>(settingsRaw);
     if (settings) dispatch(hydrateSettings(settings));
 
+    const userId = userIdOverride ?? auth?.user.id;
+    if (!userId) {
+      dispatch(clearQueue());
+      dispatch(resetSyncStatus());
+      return;
+    }
+
+    const [queueRaw, syncRaw] = await Promise.all([
+      AsyncStorage.getItem(toScopedStorageKey(STORAGE_KEYS.offlineQueue, userId)),
+      AsyncStorage.getItem(toScopedStorageKey(STORAGE_KEYS.syncStatus, userId)),
+    ]);
+
     const queue = safeJsonParse<OfflineQueueState>(queueRaw);
-    if (queue) dispatch(hydrateQueue(queue));
+    if (queue) {
+      dispatch(hydrateQueue(queue));
+    } else {
+      dispatch(clearQueue());
+    }
 
     const syncStatus = safeJsonParse<SyncStatusState>(syncRaw);
-    if (syncStatus) dispatch(hydrateSyncStatus(syncStatus));
+    if (syncStatus) {
+      dispatch(hydrateSyncStatus(syncStatus));
+    } else {
+      dispatch(resetSyncStatus());
+    }
   }
 );

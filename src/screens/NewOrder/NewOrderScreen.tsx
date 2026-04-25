@@ -19,20 +19,21 @@ import { MeasurementInput } from "@/src/components/measurement/MeasurementInput"
 import {
   GARMENT_LABEL_KEY,
   GARMENT_MEASUREMENT_FIELDS,
+  GARMENT_STITCHING_FIELDS,
   MEASUREMENT_LABEL_KEYS,
+  STITCHING_LABEL_KEYS,
 } from "@/src/constants/measurementFields";
 
 import type { Garment, GarmentType, Order } from "@/src/types/order";
 import {
   createOrderLocal,
   getOrderById,
-  listOrdersByCustomerPhone,
   removeOrderLocal,
   upsertOrderLocal,
   updateOrderLocal,
 } from "@/src/api/ordersRepository";
-import { isValidPhone } from "@/src/utils/validation";
-import { useAppDispatch } from "@/src/store/hooks";
+import { isValidPhone, parsePositiveNumber } from "@/src/utils/validation";
+import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
 import { enqueue } from "@/src/store/slices/offlineQueueSlice";
 import { remoteApi } from "@/src/api/remoteApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -43,6 +44,14 @@ type SaveResult = {
   order?: Order;
   mode: SaveMode;
 };
+
+type GarmentFieldErrors = Record<
+  string,
+  {
+    measurements?: string;
+    stitching?: string;
+  }
+>;
 
 function emptyGarment(type: GarmentType): Garment {
   return {
@@ -58,6 +67,7 @@ function emptyGarment(type: GarmentType): Garment {
 export function NewOrderScreen() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
+  const userId = useAppSelector((state) => state.auth.session?.user.id);
   const qc = useQueryClient();
   const params = useLocalSearchParams<{
     phone?: string;
@@ -78,6 +88,7 @@ export function NewOrderScreen() {
   const [garmentPickerOpen, setGarmentPickerOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [garmentErrors, setGarmentErrors] = useState<GarmentFieldErrors>({});
   const isEditMode =
     typeof params.editOrderId === "string" && params.editOrderId.length > 0;
 
@@ -88,6 +99,7 @@ export function NewOrderScreen() {
     deliveryDate?: string;
     price?: string;
     advance?: string;
+    garments?: string;
   }>({});
 
   const resetForm = () => {
@@ -102,6 +114,31 @@ export function NewOrderScreen() {
     setGarments([]);
     setEditingOrder(null);
     setErrors({});
+    setGarmentErrors({});
+  };
+
+  const updateGarmentStyling = (
+    garmentId: string,
+    field: "collarType" | "cuffSize" | "frontPocket" | "sidePocket",
+    value: string | boolean,
+  ) => {
+    setGarments((prev) =>
+      prev.map((x) =>
+        x.id === garmentId
+          ? {
+              ...x,
+              styling: {
+                ...x.styling,
+                [field]: value,
+              },
+            }
+          : x,
+      ),
+    );
+    setGarmentErrors((prev) => ({
+      ...prev,
+      [garmentId]: { ...prev[garmentId], stitching: undefined },
+    }));
   };
 
   useEffect(() => {
@@ -159,14 +196,25 @@ export function NewOrderScreen() {
   }, [isEditMode, params.copyOrderId]);
 
   const historyQuery = useQuery({
-    queryKey: ["customers", "history", phone],
-    enabled: phoneValid && phone.trim().length > 0,
-    queryFn: () => listOrdersByCustomerPhone(phone.replace(/\s+/g, "")),
+    queryKey: ["customers", "history", userId, phone.replace(/\s+/g, "")],
+    enabled: !!userId && phoneValid && phone.trim().length > 0,
+    queryFn: async () => {
+      const normalizedPhone = phone.replace(/\s+/g, "");
+
+      try {
+        const remoteOrders = await remoteApi.fetchOrders();
+        return remoteOrders
+          .filter((order) => order.customer.phone === normalizedPhone)
+          .sort((a, b) => b.createdAt - a.createdAt);
+      } catch {
+        return [];
+      }
+    },
   });
 
   const remaining = useMemo(() => {
-    const p = Number(price) || 0;
-    const a = Number(advance) || 0;
+    const p = parsePositiveNumber(price) ?? 0;
+    const a = parsePositiveNumber(advance) ?? 0;
     return Math.max(0, p - a);
   }, [price, advance]);
 
@@ -182,8 +230,8 @@ export function NewOrderScreen() {
   const saveMutation = useMutation<SaveResult>({
     mutationFn: async () => {
       const p = phone.replace(/\s+/g, "");
-      const priceN = Number(price) || 0;
-      const advanceN = Number(advance) || 0;
+      const priceN = parsePositiveNumber(price) ?? 0;
+      const advanceN = parsePositiveNumber(advance) ?? 0;
       const deviceToken =
         editingOrder?.deviceToken ??
         ((await AsyncStorage.getItem(STORAGE_KEYS.pushToken)) ?? undefined);
@@ -226,6 +274,7 @@ export function NewOrderScreen() {
 
   const onSave = async () => {
     const nextErrors: typeof errors = {};
+    const nextGarmentErrors: GarmentFieldErrors = {};
 
     if (!name.trim()) {
       nextErrors.name = t("common.required");
@@ -244,20 +293,63 @@ export function NewOrderScreen() {
       nextErrors.deliveryDate = t("common.required");
     }
 
+    const parsedPrice = parsePositiveNumber(price);
+    const parsedAdvance = parsePositiveNumber(advance);
+
     if (!price.trim()) {
       nextErrors.price = t("common.required");
+    } else if (parsedPrice == null || parsedPrice <= 0) {
+      nextErrors.price = t("newOrder.invalidPrice");
     }
 
     if (!advance.trim()) {
       nextErrors.advance = t("common.required");
+    } else if (parsedAdvance == null) {
+      nextErrors.advance = t("newOrder.invalidAdvance");
+    } else if ((parsedPrice ?? 0) > 0 && parsedAdvance > (parsedPrice ?? 0)) {
+      nextErrors.advance = t("newOrder.advanceTooHigh");
     }
 
-    if (Object.keys(nextErrors).length > 0) {
+    if (garments.length === 0) {
+      nextErrors.garments = t("newOrder.addAtLeastOneGarment");
+    }
+
+    for (const garment of garments) {
+      const requiredMeasurements = GARMENT_MEASUREMENT_FIELDS[garment.type];
+      const missingMeasurements = requiredMeasurements.filter(
+        (field) => garment.measurements[field] == null,
+      );
+      if (missingMeasurements.length > 0) {
+        nextGarmentErrors[garment.id] = {
+          ...nextGarmentErrors[garment.id],
+          measurements: t("newOrder.completeMeasurements"),
+        };
+      }
+
+      const stitchingFields = GARMENT_STITCHING_FIELDS[garment.type].filter(
+        (field) => field !== "sidePocket",
+      );
+      const missingStitching = stitchingFields.filter((field) => {
+        const value = garment.styling[field];
+        return typeof value !== "string" || value.trim().length === 0;
+      });
+
+      if (missingStitching.length > 0) {
+        nextGarmentErrors[garment.id] = {
+          ...nextGarmentErrors[garment.id],
+          stitching: t("newOrder.completeStitchingDetails"),
+        };
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0 || Object.keys(nextGarmentErrors).length > 0) {
       setErrors(nextErrors);
+      setGarmentErrors(nextGarmentErrors);
       return;
     }
 
     setErrors({});
+    setGarmentErrors({});
     const result = await saveMutation.mutateAsync();
     const order = result.order;
     const mode = result.mode;
@@ -435,6 +527,9 @@ export function NewOrderScreen() {
             {t("newOrder.addGarment")}
           </Text>
         ) : null}
+        {errors.garments ? (
+          <Text className="text-sm text-red-600">{errors.garments}</Text>
+        ) : null}
 
         {garments.map((g) => (
           <View key={g.id} className="gap-3 rounded-3xl bg-slate-50 p-4">
@@ -488,12 +583,45 @@ export function NewOrderScreen() {
               </Pressable>
             </View>
 
+            <View className="gap-3 rounded-2xl bg-amber-50 p-4">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                {t("newOrder.styling")}
+              </Text>
+              {GARMENT_STITCHING_FIELDS[g.type].includes("collarType") ? (
+                <Input
+                  label={t(STITCHING_LABEL_KEYS.collarType)}
+                  value={g.styling.collarType ?? ""}
+                  onChangeText={(value) => updateGarmentStyling(g.id, "collarType", value)}
+                  placeholder={t("newOrder.collarTypePlaceholder")}
+                />
+              ) : null}
+              {GARMENT_STITCHING_FIELDS[g.type].includes("cuffSize") ? (
+                <Input
+                  label={t(STITCHING_LABEL_KEYS.cuffSize)}
+                  value={g.styling.cuffSize ?? ""}
+                  onChangeText={(value) => updateGarmentStyling(g.id, "cuffSize", value)}
+                  placeholder={t("newOrder.cuffSizePlaceholder")}
+                />
+              ) : null}
+              {GARMENT_STITCHING_FIELDS[g.type].includes("frontPocket") ? (
+                <Input
+                  label={t(STITCHING_LABEL_KEYS.frontPocket)}
+                  value={g.styling.frontPocket ?? ""}
+                  onChangeText={(value) => updateGarmentStyling(g.id, "frontPocket", value)}
+                  placeholder={t("newOrder.frontPocketPlaceholder")}
+                />
+              ) : null}
+              {garmentErrors[g.id]?.stitching ? (
+                <Text className="text-sm text-red-600">{garmentErrors[g.id]?.stitching}</Text>
+              ) : null}
+            </View>
+
             {GARMENT_MEASUREMENT_FIELDS[g.type].map((field) => (
               <MeasurementInput
                 key={field}
                 labelKey={MEASUREMENT_LABEL_KEYS[field] ?? field}
                 value={g.measurements[field]}
-                onChange={(next) =>
+                onChange={(next) => {
                   setGarments((prev) =>
                     prev.map((x) =>
                       x.id === g.id
@@ -503,10 +631,17 @@ export function NewOrderScreen() {
                           }
                         : x
                     )
-                  )
-                }
+                  );
+                  setGarmentErrors((prev) => ({
+                    ...prev,
+                    [g.id]: { ...prev[g.id], measurements: undefined },
+                  }));
+                }}
               />
             ))}
+            {garmentErrors[g.id]?.measurements ? (
+              <Text className="text-sm text-red-600">{garmentErrors[g.id]?.measurements}</Text>
+            ) : null}
           </View>
         ))}
       </Card>

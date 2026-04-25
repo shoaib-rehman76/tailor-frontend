@@ -32,9 +32,43 @@ function isSameDay(left: number | Date, right: number | Date) {
   );
 }
 
+type RangeKey = "today" | "7d" | "30d" | "month" | "all";
+
+const RANGE_OPTIONS: { key: RangeKey; tKey: string }[] = [
+  { key: "today", tKey: "dashboard.rangeToday" },
+  { key: "7d", tKey: "dashboard.range7d" },
+  { key: "30d", tKey: "dashboard.range30d" },
+  { key: "month", tKey: "dashboard.rangeMonth" },
+  { key: "all", tKey: "dashboard.rangeAll" },
+];
+
+function rangeStartTime(range: RangeKey): number {
+  const now = new Date();
+  const start = startOfDay(now);
+  switch (range) {
+    case "today":
+      return start.getTime();
+    case "7d": {
+      const d = new Date(start);
+      d.setDate(d.getDate() - 6);
+      return d.getTime();
+    }
+    case "30d": {
+      const d = new Date(start);
+      d.setDate(d.getDate() - 29);
+      return d.getTime();
+    }
+    case "month":
+      return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    case "all":
+      return 0;
+  }
+}
+
 export function DashboardScreen() {
   const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
+  const [range, setRange] = useState<RangeKey>("all");
 
   const query = useQuery({
     queryKey: ["orders", "list"],
@@ -42,7 +76,12 @@ export function DashboardScreen() {
   });
 
   const stats = useMemo(() => {
-    const orders = query.data ?? [];
+    const allOrders = query.data ?? [];
+    const fromTime = rangeStartTime(range);
+    const orders =
+      range === "all"
+        ? allOrders
+        : allOrders.filter((o) => o.createdAt >= fromTime);
     const today = startOfDay(new Date());
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
@@ -90,7 +129,7 @@ export function DashboardScreen() {
       outstandingRevenue,
       avgOrderValue,
     };
-  }, [query.data]);
+  }, [query.data, range]);
 
   const topCustomers = useMemo(() => {
     const map = new Map<
@@ -275,6 +314,34 @@ export function DashboardScreen() {
           </View>
         </View>
       </LinearGradient>
+
+      <View className="rounded-3xl bg-white p-3">
+        <Text className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          {t("dashboard.filterTitle")}
+        </Text>
+        <View className="flex-row flex-wrap gap-2">
+          {RANGE_OPTIONS.map((opt) => {
+            const active = range === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setRange(opt.key)}
+                className={`rounded-full px-4 py-2 ${
+                  active ? "bg-slate-900" : "bg-slate-100"
+                }`}
+              >
+                <Text
+                  className={`text-xs font-semibold ${
+                    active ? "text-white" : "text-slate-700"
+                  }`}
+                >
+                  {t(opt.tKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <View className="flex-row flex-wrap gap-3">
         {workflowCards.map((item) => (

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -273,6 +273,20 @@ export function OrdersBoardScreen() {
   ).length;
 
   const changeStatus = async (id: string, status: OrderStatus) => {
+    if (status === "DELIVERED") {
+      const order = (query.data ?? []).find((item) => item.id === id);
+      const remaining = Math.max(
+        0,
+        (order?.price ?? 0) - (order?.advance ?? 0),
+      );
+      if (remaining > 0) {
+        Alert.alert(
+          t("ordersBoard.cannotDeliverTitle"),
+          t("ordersBoard.cannotDeliverMessage", { amount: remaining }),
+        );
+        return;
+      }
+    }
     setStatusModal(null);
     await mutation.mutateAsync({ id, status });
   };

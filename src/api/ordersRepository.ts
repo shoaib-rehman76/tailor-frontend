@@ -2,6 +2,7 @@ import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import type { Order, OrderStatus } from "@/src/types/order";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { nanoid } from "@reduxjs/toolkit";
+import { getCurrentUserId, toScopedStorageKey } from "@/src/utils/storageScope";
 
 function now() {
   return Date.now();
@@ -17,7 +18,11 @@ function generateOrderNo(existingOrders: Order[]) {
 }
 
 async function readOrders(): Promise<Order[]> {
-  const raw = await AsyncStorage.getItem(STORAGE_KEYS.orders);
+  const userId = getCurrentUserId();
+  if (!userId) return [];
+  const raw = await AsyncStorage.getItem(
+    toScopedStorageKey(STORAGE_KEYS.orders, userId),
+  );
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Order[];
@@ -28,7 +33,12 @@ async function readOrders(): Promise<Order[]> {
 }
 
 async function writeOrders(orders: Order[]) {
-  await AsyncStorage.setItem(STORAGE_KEYS.orders, JSON.stringify(orders));
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  await AsyncStorage.setItem(
+    toScopedStorageKey(STORAGE_KEYS.orders, userId),
+    JSON.stringify(orders),
+  );
 }
 
 export async function listOrders(): Promise<Order[]> {

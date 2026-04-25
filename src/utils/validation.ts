@@ -10,3 +10,10 @@ export function isValidEmail(emailRaw: string) {
   const email = emailRaw.trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+export function parsePositiveNumber(valueRaw: string) {
+  const value = Number(valueRaw.trim());
+  if (!Number.isFinite(value)) return undefined;
+  if (value < 0) return undefined;
+  return value;
+}

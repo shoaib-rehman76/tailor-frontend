@@ -2,7 +2,11 @@ import "@/src/i18n";
 
 import React, { useEffect, useMemo, useRef } from "react";
 import { Provider } from "react-redux";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { store } from "@/src/store/store";
 import { hydrateAllFromStorage } from "@/src/bootstrap/hydrateAllFromStorage";
 import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
@@ -11,12 +15,16 @@ import { setupPersistence } from "@/src/bootstrap/setupPersistence";
 import { useOfflineSync } from "@/src/hooks/useOfflineSync";
 import { clearSession } from "@/src/store/slices/authSlice";
 import { authApi } from "@/src/api/authApi";
+import { clearQueue } from "@/src/store/slices/offlineQueueSlice";
+import { resetSyncStatus } from "@/src/store/slices/syncStatusSlice";
 
 function Bootstrapper({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
   const language = useAppSelector((s) => s.settings.language);
   const session = useAppSelector((s) => s.auth.session);
   const validatedTokenRef = useRef<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
   useOfflineSync();
 
   useEffect(() => {
@@ -28,6 +36,24 @@ function Bootstrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void applyLanguageAndDirection(language);
   }, [language]);
+
+  useEffect(() => {
+    const userId = session?.user.id ?? null;
+
+    if (previousUserIdRef.current !== userId) {
+      queryClient.clear();
+    }
+
+    if (!userId) {
+      dispatch(clearQueue());
+      dispatch(resetSyncStatus());
+      previousUserIdRef.current = null;
+      return;
+    }
+
+    previousUserIdRef.current = userId;
+    void dispatch(hydrateAllFromStorage(userId));
+  }, [dispatch, queryClient, session?.user.id]);
 
   useEffect(() => {
     if (!session) return;
